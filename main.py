@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 import re
-from tqdm import tqdm
 from multiprocessing import Pool
 
 
@@ -20,57 +19,99 @@ def find_all(long_str, ch):
     return [m.start() for m in re.finditer(ch, long_str)]
 
 
-def update_board_and_hints(hidden_word, last_input_word, game_board, letter_hints):
-    hint_str_list = [''] * len(hidden_word)
-    letters_to_find = [l for l in hidden_word]
-    found_idxs = list()
-    for letter_idx, letter in enumerate(last_input_word):
-        valid_letter_idxs = find_all(hidden_word, letter)
-        if letter_idx in valid_letter_idxs:
-            hint_str_list[letter_idx] = 'V'
-            letter_hints[letter] = f'idx={letter_idx}'
-            letters_to_find.remove(letter)
-            found_idxs.append(letter_idx)
+def update_board_and_hints(hidden_word, last_input_word, game_board, found_letter_idxs: list, letter_min_count: dict,
+                           letters_to_filter: list, letter_idx_filter: list, hint_str: str = None):
 
-    for letter_idx, letter in enumerate(last_input_word):
-        if letter in letter_hints.keys():
-            existing_hint = letter_hints[letter]
-        else:
-            existing_hint = ''
+    # calculate hint string
+    if hint_str is None:
+        hint_str_list = [''] * len(hidden_word)
+        letters_to_find = [l for l in hidden_word]
+        found_idxs = list()
+        for letter_idx, letter in enumerate(last_input_word):
+            valid_letter_idxs = find_all(hidden_word, letter)
+            if letter_idx in valid_letter_idxs:
+                hint_str_list[letter_idx] = 'V'
+                letters_to_find.remove(letter)
+                found_idxs.append(letter_idx)
 
-        if letter_idx in found_idxs:
-            continue
+        for letter_idx, letter in enumerate(last_input_word):
+            if letter_idx in found_idxs:
+                continue
 
-        elif letter in letters_to_find:
-            hint_str_list[letter_idx] = '~'
+            elif letter in letters_to_find:
+                hint_str_list[letter_idx] = '~'
 
-            if existing_hint == '':
-                letter_hints[letter] = f'exists'
+            else:
+                hint_str_list[letter_idx] = '*'
 
-        else:
-            hint_str_list[letter_idx] = '*'
+        hint_str = ''.join(hint_str_list)
 
-            if existing_hint == '':
-                letter_hints[letter] = f'filter'
+    # use hint string to update the hints
+    letter_counter = dict()
+    for marking_idx, marking in enumerate(hint_str):
+        curr_letter = last_input_word[marking_idx]
+        if marking == 'V':
+            info_tuple = (curr_letter, marking_idx)
+            if info_tuple not in found_letter_idxs:
+                found_letter_idxs.append(info_tuple)
 
-    game_board.append(''.join(hint_str_list))
+            letter_counter[curr_letter] = \
+                1 if curr_letter not in letter_counter.keys() else letter_counter[curr_letter] + 1
+
+    marked_letters = list()
+    for marking_idx, marking in enumerate(hint_str):
+        curr_letter = last_input_word[marking_idx]
+        if marking == '~':
+            info_tuple = (curr_letter, marking_idx)
+            if info_tuple not in letter_idx_filter:
+                letter_idx_filter.append(info_tuple)
+
+            if curr_letter not in marked_letters:
+                letter_counter[curr_letter] = \
+                    1 if curr_letter not in letter_counter.keys() else letter_counter[curr_letter] + 1
+                marked_letters.append(curr_letter)
+
+        elif marking == '*':
+            if curr_letter not in letters_to_filter and curr_letter not in set([x[0] for x in found_letter_idxs]):
+                letters_to_filter.append(curr_letter)
+
+    # update letter counters
+    for letter, letter_count in letter_counter.items():
+        if letter not in letter_min_count.keys():
+            letter_min_count[letter] = 0
+        letter_min_count[letter] = max(letter_min_count[letter], letter_count)
+
+    # update game board
+    game_board.append(hint_str)
     game_board.append(last_input_word)
 
 
-def thread_func__test_single_word(guess_word, valid_words, letter_hints):
+def thread_func__test_single_word(guess_word, valid_words, found_letter_idxs: list, letter_min_count: dict,
+                                  letters_to_filter: list, letter_idx_filter: list):
     stats_list = list()
     for hidden_word in valid_words:
-        curr_letter_hints = letter_hints.copy()
-        update_board_and_hints(hidden_word, guess_word, list(), curr_letter_hints)
-        curr_valid_words = filter_words_by_hints(valid_words, curr_letter_hints)
+
+        curr_found_letter_idxs = found_letter_idxs.copy()
+        curr_letter_min_count = letter_min_count.copy()
+        curr_letters_to_filter = letters_to_filter.copy()
+        curr_letter_idx_filter = letter_idx_filter.copy()
+
+        update_board_and_hints(
+            hidden_word, guess_word, list(), curr_found_letter_idxs, curr_letter_min_count, curr_letters_to_filter,
+            curr_letter_idx_filter)
+        curr_valid_words = \
+            filter_words_by_hints(valid_words, curr_found_letter_idxs, curr_letter_min_count, curr_letters_to_filter,
+                                  curr_letter_idx_filter)
         stats_list.append(len(curr_valid_words))
 
     return guess_word, np.mean(stats_list)
 
 
-def get_best_guess(word_list, valid_words, letter_hints: dict):
-    if len(letter_hints.keys()) == 0:
+def get_best_guess(word_list, valid_words, found_letter_idxs: list, letter_min_count: dict, letters_to_filter: list,
+                   letter_idx_filter: list):
+    if len(valid_words) == len(word_list):
         return 'RAISE'
+
     elif len(valid_words) == 1:
         return valid_words[0]
 
@@ -79,21 +120,33 @@ def get_best_guess(word_list, valid_words, letter_hints: dict):
         [
             word,
             valid_words.copy(),
-            letter_hints
+            found_letter_idxs,
+            letter_min_count,
+            letters_to_filter,
+            letter_idx_filter
         ]
         for word in word_list
     ]
 
     # create pool
-    pool = Pool(processes=os.cpu_count() - 2)
-    word_stats_items = pool.starmap(thread_func__test_single_word, thread_param_list)
-    pool.close()
-    pool.join()
+    use_pool = True
+    if use_pool:
+        pool = Pool(processes=os.cpu_count() - 2)
+        word_stats_items = pool.starmap(thread_func__test_single_word, thread_param_list)
+        pool.close()
+        pool.join()
+
+    else:
+        word_stats_items = list()
+        for param_arr in thread_param_list:
+            word_stats_items.append(thread_func__test_single_word(*param_arr))
 
     # sort results
     sorted_words = sorted(word_stats_items, key=lambda item: item[1])
-    pool.terminate()
-    del pool
+
+    if use_pool:
+        pool.terminate()
+        del pool
 
     # look for optimal word to suggest
     best_score = sorted_words[0][1]
@@ -112,19 +165,27 @@ def get_best_guess(word_list, valid_words, letter_hints: dict):
     return sorted_words[0][0]
 
 
-def filter_words_by_hints(word_list: list, letter_hint_dict: dict):
+def filter_words_by_hints(word_list: list, found_letter_idxs: list, letter_min_count: dict, letters_to_filter: list,
+                          letter_idx_filter: list):
 
+    # duplicate input word list
     word_list = word_list.copy()
-    for letter, hint in letter_hint_dict.items():
-        if hint.startswith('idx'):
-            expected_letter_idx = int(hint.split('=')[1])
-            word_list = [w for w in word_list if w[expected_letter_idx] == letter]
 
-        elif hint == 'exists':
-            word_list = [w for w in word_list if letter in w]
+    # enforce found letters hints
+    for letter, expected_idx in found_letter_idxs:
+        word_list = [w for w in word_list if w[expected_idx] == letter]
 
-        else:
-            word_list = [w for w in word_list if letter not in w]
+    # enforce letter count hints
+    for letter, expected_min_count in letter_min_count.items():
+        word_list = [w for w in word_list if len(find_all(w, letter)) >= expected_min_count]
+
+    # enforce filter hints
+    for letter in letters_to_filter:
+        word_list = [w for w in word_list if letter not in w]
+
+    # enforce letter idx filter hints
+    for letter, investigated_idx in letter_idx_filter:
+        word_list = [w for w in word_list if w[investigated_idx] != letter]
 
     return word_list
 
@@ -138,26 +199,34 @@ def main():
 
     # prepare wordle board
     game_board = list()
-    letter_hints = dict()   # one record for each letter. possible values: filter | exists | idx={#}
+    found_letter_idxs = list()
+    letter_min_count = dict()
+    letters_to_filter = list()
+    letter_idx_filter = list()
 
     # iterate
     if not is_real:
         hidden_word = word_list[np.random.randint(0, len(word_list))]
         hidden_word = hidden_word.upper()
+        print(f'The selected word is: {hidden_word}')
     else:
         hidden_word = 'N/A'
 
     valid_words = word_list.copy()
-    last_input_word = ''
+    last_input_word = None
     while len(game_board) == 0 or (len(game_board) < 12 and game_board[-2] != 'VVVVV'):
 
         # update valid words
-        valid_words = filter_words_by_hints(valid_words, letter_hints)
+        valid_words = \
+            filter_words_by_hints(
+                valid_words, found_letter_idxs, letter_min_count, letters_to_filter, letter_idx_filter)
         print(f'Total valid words: {len(valid_words)}')
 
         # suggest best word
         print('Calculating best guess..')
-        best_word = get_best_guess(word_list, valid_words, letter_hints)
+        best_word = \
+            get_best_guess(
+                word_list, valid_words, found_letter_idxs, letter_min_count, letters_to_filter, letter_idx_filter)
 
         # print suggestion
         print(f'I suggest: {best_word}')
@@ -175,23 +244,12 @@ def main():
         if is_real:
             print('Please provide game output:')
             game_output = input()
-            for idx, marking in enumerate(game_output):
-                if marking == 'V':
-                    letter_hints[last_input_word[idx]] = f'idx={idx}'
-
-            for idx, marking in enumerate(game_output):
-                letter = last_input_word[idx]
-                curr_hint = letter_hints[letter] if letter in letter_hints.keys() else ''
-                if marking == '~' and curr_hint == '':
-                    letter_hints[letter] = 'exists'
-                elif marking == '*' and curr_hint == '':
-                    letter_hints[letter] = 'filter'
-
-            game_board.append(game_output)
-            game_board.append(last_input_word)
 
         else:
-            update_board_and_hints(hidden_word, last_input_word, game_board, letter_hints)
+            game_output = None
+
+        update_board_and_hints(hidden_word, last_input_word, game_board, found_letter_idxs, letter_min_count,
+                               letters_to_filter, letter_idx_filter, game_output)
 
         # print board
         print('Current board state:')
