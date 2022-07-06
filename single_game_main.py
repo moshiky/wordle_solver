@@ -2,7 +2,8 @@
 import sys
 
 from game_manager import GameManager
-from utils import load_word_list, get_player, get_judge
+from factory import get_player, get_judge
+from utils import load_word_list
 from wordle_board import WordleBoard
 
 
