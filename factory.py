@@ -1,3 +1,4 @@
+from auto_player import AutoPlayer
 from empty_solver import EmptySolver
 from online_game_judge import OnlineGameJudge
 from simulated_game_judge import SimulatedGameJudge
@@ -11,6 +12,8 @@ from wordle_solver import WordleSolver
 def get_player(player_type: str, word_list: list) -> WordlePlayer:
     if player_type == 'user_player':
         return UserPlayer(word_list)
+    elif player_type == 'auto_player':
+        return AutoPlayer(word_list)
     else:
         raise Exception(f'Unknown player type: {player_type}')
 
