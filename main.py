@@ -10,7 +10,7 @@ IS_REAL = False
 USE_POOL = True
 
 
-def log(msg: str):
+def log(msg):
     print(f'[{time.ctime()}] >> {msg}')
 
 
@@ -118,7 +118,9 @@ def thread_func__test_single_word(guess_word, valid_words, found_letter_idxs: li
 def get_best_guess(word_list, valid_words, found_letter_idxs: list, letter_min_count: dict, letters_to_filter: list,
                    letter_idx_filter: list):
     if len(valid_words) == len(word_list):
-        return 'RAISE'
+        # {'ARISE': 63.47, 'AROSE': 65.76, 'IRATE': 63.46, 'RAISE': 60.69}
+        best_initial_words = ['ARISE', 'RAISE', 'AROSE', 'IRATE']
+        return np.random.choice(best_initial_words)
 
     elif len(valid_words) == 1:
         return valid_words[0]
@@ -166,7 +168,8 @@ def get_best_guess(word_list, valid_words, found_letter_idxs: list, letter_min_c
     valid_words_set = set(valid_words)
     set_intersection = sim_words_set & valid_words_set
     if len(set_intersection) > 0:
-        return dict([x for x in word_stats_items if x[0] in set_intersection])
+        log(dict([x for x in word_stats_items if x[0] in set_intersection]))
+        return np.random.choice(list(set_intersection))
 
     # otherwise, just return first word
     return sorted_words[0][0]
@@ -240,7 +243,7 @@ def main():
 
     # iterate
     if not IS_REAL:
-        hidden_word = word_list[np.random.randint(0, len(word_list))]
+        hidden_word = np.random.choice(word_list)
         hidden_word = hidden_word.upper()
         log(f'The selected word is: {hidden_word}')
     else:
