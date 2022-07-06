@@ -1,3 +1,5 @@
+from utils import log
+
 
 class WordleBoard:
 
@@ -8,10 +10,20 @@ class WordleBoard:
         self.__init__()
 
     def update(self, player_guess: str, judgment: str):
-        pass
+        self._game_board.append(judgment)
+        self._game_board.append(player_guess)
 
     def visualize(self):
-        pass
+        for idx in range(int(len(self._game_board) / 2)):
+            log(self._game_board[2 * idx])
+            log(self._game_board[2 * idx + 1])
+            log('')
 
     def is_game_over(self):
-        pass
+        if len(self._game_board) == 0:
+            return False
+
+        return (len(self._game_board) >= 12) or self.is_it_a_win()
+
+    def is_it_a_win(self):
+        return self._game_board[-2] == 'VVVVV'
