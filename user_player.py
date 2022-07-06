@@ -1,4 +1,4 @@
-from utils import log
+from log_utils import log
 from wordle_player import WordlePlayer
 
 
@@ -11,6 +11,9 @@ class UserPlayer(WordlePlayer):
             log('Input invalid, please try again.')
             user_guess = input()
         return user_guess.upper()
+
+    def init(self):
+        pass
 
     @staticmethod
     def _is_input_valid(user_input: str):

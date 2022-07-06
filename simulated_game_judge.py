@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import log, find_all
+from utils import find_all
 from wordle_judge import WordleJudge
 
 

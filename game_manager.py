@@ -1,4 +1,4 @@
-from utils import log
+from log_utils import log
 from wordle_board import WordleBoard
 from wordle_player import WordlePlayer
 from wordle_judge import WordleJudge
@@ -15,8 +15,8 @@ class GameManager:
         self.init_game()
 
     def init_game(self):
-        self._player.init(self._word_list)
-        self._judge.init(self._word_list)
+        self._player.init()
+        self._judge.init()
         self._game_board.init()
 
     def run(self):

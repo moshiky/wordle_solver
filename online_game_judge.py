@@ -1,4 +1,4 @@
-from utils import log
+from log_utils import log
 from wordle_judge import WordleJudge
 
 

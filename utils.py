@@ -1,16 +1,12 @@
 import re
-import time
 import pandas as pd
 
+from log_utils import log
 from online_game_judge import OnlineGameJudge
 from simulated_game_judge import SimulatedGameJudge
 from user_player import UserPlayer
 from wordle_judge import WordleJudge
 from wordle_player import WordlePlayer
-
-
-def log(msg):
-    print(f'[{time.ctime()}] >> {msg}')
 
 
 def get_player(player_type: str, word_list: list) -> WordlePlayer:
