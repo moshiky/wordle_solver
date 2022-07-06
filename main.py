@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 import re
 from multiprocessing import Pool
+from tqdm import tqdm
 
-
-is_real = False
+IS_REAL = False
+USE_POOL = True
 
 
 def print_board(game_board):
@@ -99,9 +100,11 @@ def thread_func__test_single_word(guess_word, valid_words, found_letter_idxs: li
         update_board_and_hints(
             hidden_word, guess_word, list(), curr_found_letter_idxs, curr_letter_min_count, curr_letters_to_filter,
             curr_letter_idx_filter)
+
         curr_valid_words = \
             filter_words_by_hints(valid_words, curr_found_letter_idxs, curr_letter_min_count, curr_letters_to_filter,
                                   curr_letter_idx_filter)
+
         stats_list.append(len(curr_valid_words))
 
     return guess_word, np.mean(stats_list)
@@ -129,8 +132,7 @@ def get_best_guess(word_list, valid_words, found_letter_idxs: list, letter_min_c
     ]
 
     # create pool
-    use_pool = True
-    if use_pool:
+    if USE_POOL:
         pool = Pool(processes=os.cpu_count() - 2)
         word_stats_items = pool.starmap(thread_func__test_single_word, thread_param_list)
         pool.close()
@@ -138,13 +140,13 @@ def get_best_guess(word_list, valid_words, found_letter_idxs: list, letter_min_c
 
     else:
         word_stats_items = list()
-        for param_arr in thread_param_list:
+        for param_arr in tqdm(thread_param_list):
             word_stats_items.append(thread_func__test_single_word(*param_arr))
 
     # sort results
     sorted_words = sorted(word_stats_items, key=lambda item: item[1])
 
-    if use_pool:
+    if USE_POOL:
         pool.terminate()
         del pool
 
@@ -169,25 +171,52 @@ def filter_words_by_hints(word_list: list, found_letter_idxs: list, letter_min_c
                           letter_idx_filter: list):
 
     # duplicate input word list
-    word_list = word_list.copy()
+    new_word_list = list()
 
-    # enforce found letters hints
-    for letter, expected_idx in found_letter_idxs:
-        word_list = [w for w in word_list if w[expected_idx] == letter]
+    # iterate words
+    for word in word_list:
 
-    # enforce letter count hints
-    for letter, expected_min_count in letter_min_count.items():
-        word_list = [w for w in word_list if len(find_all(w, letter)) >= expected_min_count]
+        # enforce filter hints
+        is_valid_word = True
+        for letter in letters_to_filter:
+            if letter in word:
+                is_valid_word = False
+                break
 
-    # enforce filter hints
-    for letter in letters_to_filter:
-        word_list = [w for w in word_list if letter not in w]
+        if not is_valid_word:
+            continue
 
-    # enforce letter idx filter hints
-    for letter, investigated_idx in letter_idx_filter:
-        word_list = [w for w in word_list if w[investigated_idx] != letter]
+        # enforce letter idx filter hints
+        for letter, investigated_idx in letter_idx_filter:
+            if word[investigated_idx] == letter:
+                is_valid_word = False
+                break
 
-    return word_list
+        if not is_valid_word:
+            continue
+
+        # enforce found letters hints
+        for letter, expected_idx in found_letter_idxs:
+            if word[expected_idx] != letter:
+                is_valid_word = False
+                break
+
+        if not is_valid_word:
+            continue
+
+        # enforce letter count hints
+        for letter, expected_min_count in letter_min_count.items():
+            if len(find_all(word, letter)) < expected_min_count:
+                is_valid_word = False
+                break
+
+        if not is_valid_word:
+            continue
+        else:
+            # in case got here - this word is valid
+            new_word_list.append(word)
+
+    return new_word_list
 
 
 def main():
@@ -205,7 +234,7 @@ def main():
     letter_idx_filter = list()
 
     # iterate
-    if not is_real:
+    if not IS_REAL:
         hidden_word = word_list[np.random.randint(0, len(word_list))]
         hidden_word = hidden_word.upper()
         print(f'The selected word is: {hidden_word}')
@@ -241,7 +270,7 @@ def main():
             last_input_word = input('Your guess: ').upper()
 
         # update board and hints
-        if is_real:
+        if IS_REAL:
             print('Please provide game output:')
             game_output = input()
 
@@ -260,7 +289,7 @@ def main():
 
     if game_board[-2] == 'VVVVV':
         print('YOU WON!!')
-    elif not is_real:
+    elif not IS_REAL:
         print(f'Hidden word is: {hidden_word}')
     else:
         print('Check game to see hidden word')
