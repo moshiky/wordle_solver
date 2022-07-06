@@ -14,6 +14,7 @@ class WordleBoard:
         self._game_board.append(player_guess)
 
     def visualize(self):
+        log('--- Current board state ---')
         for idx in range(int(len(self._game_board) / 2)):
             log(self._game_board[2 * idx])
             log(self._game_board[2 * idx + 1])
