@@ -1,3 +1,4 @@
+from utils import log
 from wordle_board import WordleBoard
 from wordle_player import WordlePlayer
 from wordle_judge import WordleJudge
@@ -26,3 +27,9 @@ class GameManager:
             self._player.update(judgment)
             self._game_board.update(player_guess, judgment)
             self._game_board.visualize()
+
+        if self._game_board.is_it_a_win():
+            log('You WON!!')
+        else:
+            log('Maybe next time..')
+            log(self._judge.get_reveal_message())
