@@ -4,7 +4,9 @@ from wordle_player import WordlePlayer
 
 class UserPlayer(WordlePlayer):
 
-    def guess(self):
+    def guess(self, solver_tip: str = None):
+        if solver_tip is not None:
+            log(f'Solver tip: {solver_tip}')
         log('Please enter your guess:')
         user_guess = input()
         while not self._is_input_valid(user_guess) or not self._is_valid_word(user_guess):
