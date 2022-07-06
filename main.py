@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import re
@@ -9,11 +10,15 @@ IS_REAL = False
 USE_POOL = True
 
 
+def log(msg: str):
+    print(f'[{time.ctime()}] >> {msg}')
+
+
 def print_board(game_board):
     for idx in range(int(len(game_board) / 2)):
-        print(game_board[2 * idx])
-        print(game_board[2 * idx + 1])
-        print(' ')
+        log(game_board[2 * idx])
+        log(game_board[2 * idx + 1])
+        log(' ')
 
 
 def find_all(long_str, ch):
@@ -161,7 +166,7 @@ def get_best_guess(word_list, valid_words, found_letter_idxs: list, letter_min_c
     valid_words_set = set(valid_words)
     set_intersection = sim_words_set & valid_words_set
     if len(set_intersection) > 0:
-        return set_intersection
+        return dict([x for x in word_stats_items if x[0] in set_intersection])
 
     # otherwise, just return first word
     return sorted_words[0][0]
@@ -224,7 +229,7 @@ def main():
     words_df = pd.read_csv('wordle_words.csv')
     word_list = words_df[words_df.columns[0]].values.tolist()
     word_list = [x.upper() for x in word_list]
-    print(f'loaded {len(word_list)} words')
+    log(f'loaded {len(word_list)} words')
 
     # prepare wordle board
     game_board = list()
@@ -237,7 +242,7 @@ def main():
     if not IS_REAL:
         hidden_word = word_list[np.random.randint(0, len(word_list))]
         hidden_word = hidden_word.upper()
-        print(f'The selected word is: {hidden_word}')
+        log(f'The selected word is: {hidden_word}')
     else:
         hidden_word = 'N/A'
 
@@ -249,29 +254,31 @@ def main():
         valid_words = \
             filter_words_by_hints(
                 valid_words, found_letter_idxs, letter_min_count, letters_to_filter, letter_idx_filter)
-        print(f'Total valid words: {len(valid_words)}')
+        log(f'Total valid words: {len(valid_words)}')
 
         # suggest best word
-        print('Calculating best guess..')
+        log('Calculating best guess..')
+        start_time = time.time()
         best_word = \
             get_best_guess(
                 word_list, valid_words, found_letter_idxs, letter_min_count, letters_to_filter, letter_idx_filter)
+        log(f'compute time: {time.time() - start_time:.2f} seconds')
 
         # print suggestion
-        print(f'I suggest: {best_word}')
+        log(f'I suggest: {best_word}')
 
         # receive input
         last_input_word = input('Your guess:  ').upper()
         while last_input_word not in word_list:
             if len(last_input_word) != 5:
-                print('ERROR >> input word must be of 5 letters exactly')
+                log('ERROR >> input word must be of 5 letters exactly')
             else:
-                print('ERROR >> unknown word')
+                log('ERROR >> unknown word')
             last_input_word = input('Your guess: ').upper()
 
         # update board and hints
         if IS_REAL:
-            print('Please provide game output:')
+            log('Please provide game output:')
             game_output = input()
 
         else:
@@ -281,18 +288,18 @@ def main():
                                letters_to_filter, letter_idx_filter, game_output)
 
         # print board
-        print('Current board state:')
-        print('')
+        log('Current board state:')
+        log('')
         print_board(game_board)
 
-        print('-----------------------------------------')
+        log('-----------------------------------------')
 
     if game_board[-2] == 'VVVVV':
-        print('YOU WON!!')
+        log('YOU WON!!')
     elif not IS_REAL:
-        print(f'Hidden word is: {hidden_word}')
+        log(f'Hidden word is: {hidden_word}')
     else:
-        print('Check game to see hidden word')
+        log('Check game to see hidden word')
 
 
 if __name__ == '__main__':
