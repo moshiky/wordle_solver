@@ -16,15 +16,18 @@ class SimulatedGameJudge(WordleJudge):
         self._hidden_word = np.random.choice(self._word_list)
 
     def judge(self, player_guess: str):
+        return SimulatedGameJudge.judge_for_hidden_word(player_guess, self._hidden_word)
 
+    @staticmethod
+    def judge_for_hidden_word(player_guess: str, hidden_word: str) -> str:
         # init state
-        judgment_str_list = [''] * len(self._hidden_word)
-        letters_to_find = [l for l in self._hidden_word]
+        judgment_str_list = [''] * len(hidden_word)
+        letters_to_find = [l for l in hidden_word]
         found_idxs = list()
 
         # look for letters in place
         for letter_idx, letter in enumerate(player_guess):
-            valid_letter_idxs = find_all(self._hidden_word, letter)
+            valid_letter_idxs = find_all(hidden_word, letter)
             if letter_idx in valid_letter_idxs:
                 judgment_str_list[letter_idx] = 'V'
                 letters_to_find.remove(letter)

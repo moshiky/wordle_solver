@@ -10,5 +10,5 @@ class WordleSolver:
     def get_tip(self) -> str:
         raise NotImplementedError()
 
-    def update(self, player_guess: str, judgment: str) -> str:
+    def update(self, player_guess: str, judgment: str):
         raise NotImplementedError()

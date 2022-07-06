@@ -9,5 +9,5 @@ class EmptySolver(WordleSolver):
     def get_tip(self) -> str:
         return None
 
-    def update(self, player_guess: str, judgment: str) -> str:
+    def update(self, player_guess: str, judgment: str):
         pass
