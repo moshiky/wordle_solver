@@ -13,7 +13,7 @@ from wordle_solver import WordleSolver
 
 class ValidWordsStatsSolver(WordleSolver):
 
-    def __init__(self, word_list: list, use_pool: bool = True):
+    def __init__(self, word_list: list, use_pool: bool = True, log_run_time: bool = False):
         super().__init__(word_list)
 
         self._valid_words = None
@@ -23,6 +23,7 @@ class ValidWordsStatsSolver(WordleSolver):
         self._letter_idx_filter = None
 
         self._use_pool = use_pool
+        self._log_run_time = log_run_time
 
         self.init()
 
@@ -37,9 +38,11 @@ class ValidWordsStatsSolver(WordleSolver):
     def get_tip(self) -> str:
 
         # get best guess
+        log('Computing tip..')
         start_time = time.time()
         best_guess = self._get_best_guess()
-        log(f'compute time: {time.time() - start_time:.2f} seconds')
+        if self._log_run_time:
+            log(f'compute time: {time.time() - start_time:.2f} seconds')
 
         return best_guess
 
