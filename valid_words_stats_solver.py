@@ -216,7 +216,7 @@ class ValidWordsStatsSolver(WordleSolver):
                 self._letters_to_filter,
                 self._letter_idx_filter
             ]
-            for word in self._word_list
+            for word in self._valid_words
         ]
 
         # create pool
