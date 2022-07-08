@@ -17,8 +17,6 @@ class GameManager:
         self._game_board = game_board
         self._solver = solver
 
-        self.init_game()
-
     def init_game(self):
         self._player.init()
         self._judge.init()
@@ -40,7 +38,11 @@ class GameManager:
             self._game_board.visualize()
 
         if self._game_board.is_it_a_win():
-            log('You WON!!')
+            guesses_to_win = self._game_board.count_turns_so_far()
+            log(f'You WON!! it took {guesses_to_win} guesses to win')
+            return guesses_to_win
+
         else:
             log('Maybe next time..')
             log(self._judge.get_reveal_message())
+            return 0

@@ -15,7 +15,7 @@ class WordleBoard:
 
     def visualize(self):
         log('--- Current board state ---')
-        for idx in range(int(len(self._game_board) / 2)):
+        for idx in range(self.count_turns_so_far()):
             log(self._game_board[2 * idx])
             log(self._game_board[2 * idx + 1])
             log('')
@@ -24,7 +24,10 @@ class WordleBoard:
         if len(self._game_board) == 0:
             return False
 
-        return (len(self._game_board) >= 12) or self.is_it_a_win()
+        return (self.count_turns_so_far() >= 6) or self.is_it_a_win()
 
     def is_it_a_win(self):
         return self._game_board[-2] == 'VVVVV'
+
+    def count_turns_so_far(self):
+        return int(len(self._game_board) / 2)

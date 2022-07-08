@@ -21,6 +21,7 @@ class ValidWordsStatsSolver(WordleSolver):
         self._letter_min_count = None
         self._letters_to_filter = None
         self._letter_idx_filter = None
+        self._guess_history = None
 
         self._use_pool = use_pool
         self._log_run_time = log_run_time
@@ -34,6 +35,7 @@ class ValidWordsStatsSolver(WordleSolver):
         self._letter_min_count = dict()
         self._letters_to_filter = list()
         self._letter_idx_filter = list()
+        self._guess_history = set()
 
     def get_tip(self) -> str:
 
@@ -54,7 +56,8 @@ class ValidWordsStatsSolver(WordleSolver):
             self._found_letter_idxs,
             self._letter_min_count,
             self._letters_to_filter,
-            self._letter_idx_filter
+            self._letter_idx_filter,
+            self._guess_history
         )
 
         # update valid words
@@ -64,12 +67,16 @@ class ValidWordsStatsSolver(WordleSolver):
                 self._found_letter_idxs,
                 self._letter_min_count,
                 self._letters_to_filter,
-                self._letter_idx_filter
+                self._letter_idx_filter,
+                self._guess_history
             )
 
     @staticmethod
     def update_clues(player_guess: str, judgment: str, found_letter_idxs: list, letter_min_count: dict,
-                     letters_to_filter: list, letter_idx_filter: list):
+                     letters_to_filter: list, letter_idx_filter: list, guess_history: set):
+
+        # join current guess to guess history
+        guess_history.add(player_guess)
 
         # use judgment string to update the clues
         letter_counter = dict()
@@ -108,13 +115,13 @@ class ValidWordsStatsSolver(WordleSolver):
 
     @staticmethod
     def _filter_words_by_hints(word_list: list, found_letter_idxs: list, letter_min_count: dict,
-                               letters_to_filter: list, letter_idx_filter: list):
+                               letters_to_filter: list, letter_idx_filter: list, guess_history: set):
 
         # duplicate input word list
         new_word_list = list()
 
         # iterate words
-        for word in word_list:
+        for word in set(word_list) - set(guess_history):
 
             # enforce filter hints
             is_valid_word = True
@@ -160,11 +167,12 @@ class ValidWordsStatsSolver(WordleSolver):
 
     @staticmethod
     def thread_func__test_single_word(guess_word, valid_words, found_letter_idxs: list, letter_min_count: dict,
-                                      letters_to_filter: list, letter_idx_filter: list):
+                                      letters_to_filter: list, letter_idx_filter: list, guess_history: set):
         # init statistics list
         stats_list = list()
 
         # iterate all possible hidden words
+        curr_guess_history = guess_history.copy()
         for hidden_word in valid_words:
 
             # produce judgment - given the guess_word and assuming hidden word is hidden_word
@@ -183,14 +191,15 @@ class ValidWordsStatsSolver(WordleSolver):
                 curr_found_letter_idxs,
                 curr_letter_min_count,
                 curr_letters_to_filter,
-                curr_letter_idx_filter
+                curr_letter_idx_filter,
+                curr_guess_history
             )
 
             # calculate left valid words
             curr_valid_words = \
                 ValidWordsStatsSolver._filter_words_by_hints(
                     valid_words, curr_found_letter_idxs, curr_letter_min_count, curr_letters_to_filter,
-                    curr_letter_idx_filter
+                    curr_letter_idx_filter, curr_guess_history
                 )
 
             stats_list.append(len(curr_valid_words))
@@ -214,7 +223,8 @@ class ValidWordsStatsSolver(WordleSolver):
                 self._found_letter_idxs,
                 self._letter_min_count,
                 self._letters_to_filter,
-                self._letter_idx_filter
+                self._letter_idx_filter,
+                self._guess_history
             ]
             for word in self._valid_words
         ]
